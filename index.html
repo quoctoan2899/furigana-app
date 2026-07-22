@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Thêm Furigana & Xuất File Word (Đã sửa lỗi tải)</title>
+    <title>Công Cụ Thêm Furigana & Xuất File Word (Tải Siêu Tốc)</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -185,10 +185,13 @@
         window.onload = async function() {
             try {
                 kuroshiro = new Kuroshiro();
-                // Đã đổi link từ điển sang unpkg
+                
+                // --- PHẦN ĐÃ SỬA LỖI ---
+                // Đọc từ điển trực tiếp từ thư mục 'dict' của bạn trên GitHub
                 await kuroshiro.init(new KuromojiAnalyzer({ 
-                    dictPath: "https://unpkg.com/kuromoji@0.1.2/dict/" 
+                    dictPath: "dict/" 
                 }));
+                // -----------------------
                 
                 isReady = true;
                 
@@ -228,8 +231,7 @@
                 });
                 
                 // Thay thế các xuống dòng thành thẻ <br> để HTML hiểu
-                const formattedResult = result.replace(/
-/g, "<br>");
+                const formattedResult = result.replace(/\n/g, "<br>");
                 document.getElementById('outputArea').innerHTML = formattedResult;
 
                 // Hiển thị nút Xuất Word
@@ -260,7 +262,7 @@
             const html = preHtml + outputArea.innerHTML + postHtml;
 
             // Tạo file Blob định dạng .doc (MS Word)
-            const blob = new Blob(['﻿', html], { type: 'application/msword' });
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
             
             // Tên file tải về
