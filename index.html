@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Thêm Furigana & Xuất File Word (Tải Siêu Tốc)</title>
+    <title>Công Cụ Thêm Furigana & Xuất File Word (Bản Siêu Tốc)</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -87,13 +87,12 @@
             white-space: pre-wrap;
         }
 
-        /* Tùy chỉnh hiển thị Furigana trong trình duyệt */
         ruby {
             ruby-align: center;
         }
         rt {
             font-size: 0.6em;
-            color: #E63946; /* Màu đỏ cho Furigana dễ nhìn */
+            color: #E63946; 
         }
 
         .actions {
@@ -128,7 +127,7 @@
         }
 
         .btn-export {
-            background-color: #10B981; /* Màu xanh lá cho Word */
+            background-color: #10B981;
         }
 
         .btn-export:hover {
@@ -139,13 +138,14 @@
             text-align: center;
             margin-top: 15px;
             font-size: 14px;
-            color: #D97706; /* Màu vàng cam khi tải */
+            color: #D97706; 
             font-weight: 600;
         }
     </style>
-    <!-- Đã đổi tất cả thư viện sang unpkg.com để tránh lỗi mạng -->
-    <script src="https://unpkg.com/kuroshiro@1.2.0/dist/kuroshiro.min.js"></script>
-    <script src="https://unpkg.com/kuroshiro-analyzer-kuromoji@1.1.0/dist/kuroshiro-analyzer-kuromoji.min.js"></script>
+    
+    <!-- Đã đổi sang máy chủ Fastly (JSDelivr) siêu ổn định chống lỗi mạng -->
+    <script src="https://fastly.jsdelivr.net/npm/kuroshiro@1.2.0/dist/kuroshiro.min.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/kuroshiro-analyzer-kuromoji@1.1.0/dist/kuroshiro-analyzer-kuromoji.min.js"></script>
 </head>
 <body>
 
@@ -181,35 +181,37 @@
         let kuroshiro;
         let isReady = false;
 
-        // Khởi tạo thư viện ngay khi trang web tải xong
         window.onload = async function() {
             try {
-                kuroshiro = new Kuroshiro();
+                // Kiểm tra xem thư viện đã tải thành công chưa
+                if (typeof Kuroshiro === 'undefined') {
+                    throw new Error("Không thể tải thư viện cốt lõi từ máy chủ. Vui lòng tải lại trang (F5).");
+                }
+
+                // Xử lý linh hoạt cách khởi tạo để tránh lỗi "not a constructor"
+                const KuroshiroClass = Kuroshiro.default || Kuroshiro;
+                kuroshiro = new KuroshiroClass();
                 
-                // --- PHẦN ĐÃ SỬA LỖI ---
-                // Đọc từ điển trực tiếp từ thư mục 'dict' của bạn trên GitHub
+                // Trỏ thẳng vào thư mục dict nằm trên GitHub của bạn
                 await kuroshiro.init(new KuromojiAnalyzer({ 
-                    ddictPath: "https://quoctoan2899.github.io/dict/"
+                    dictPath: "dict/" 
                 }));
-                // -----------------------
                 
                 isReady = true;
                 
-                // Cập nhật giao diện khi đã sẵn sàng
                 const btn = document.getElementById('convertBtn');
                 btn.innerHTML = "✨ Thêm Furigana";
                 btn.disabled = false;
                 
                 document.getElementById('status').innerText = "✅ Hệ thống đã sẵn sàng!";
-                document.getElementById('status').style.color = "#10B981"; // Đổi sang màu xanh
+                document.getElementById('status').style.color = "#10B981"; 
             } catch (error) {
                 console.error(error);
-                document.getElementById('status').innerText = "❌ Lỗi khi tải từ điển. Hãy kiểm tra kết nối mạng của bạn.";
+                document.getElementById('status').innerText = "❌ Lỗi: " + error.message;
                 document.getElementById('status').style.color = "#DC2626";
             }
         };
 
-        // Hàm xử lý thêm Furigana
         async function addFurigana() {
             if (!isReady) return;
 
@@ -224,17 +226,13 @@
             btn.disabled = true;
 
             try {
-                // Kuroshiro xử lý tự động phân biệt tiếng Nhật và ngôn ngữ khác
                 const result = await kuroshiro.convert(text, { 
                     mode: "furigana", 
                     to: "hiragana" 
                 });
                 
-                // Thay thế các xuống dòng thành thẻ <br> để HTML hiểu
                 const formattedResult = result.replace(/\n/g, "<br>");
                 document.getElementById('outputArea').innerHTML = formattedResult;
-
-                // Hiển thị nút Xuất Word
                 document.getElementById('exportBtn').style.display = "flex";
                 
             } catch (error) {
@@ -246,7 +244,6 @@
             }
         }
 
-        // Hàm xuất kết quả HTML có thẻ <ruby> ra file MS Word
         function exportToWord() {
             const outputArea = document.getElementById('outputArea');
             if (!outputArea.innerText.trim()) {
@@ -254,30 +251,23 @@
                 return;
             }
 
-            // Gói HTML cơ bản để Word nhận diện đúng định dạng và font chữ
             const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tài liệu tiếng Nhật</title><style>body { font-family: 'Yu Mincho', 'MS Mincho', serif; font-size: 14pt; } ruby { ruby-align: center; } rt { font-size: 8pt; }</style></head><body>";
             const postHtml = "</body></html>";
             
-            // Lấy HTML đang hiển thị (chứa sẵn các thẻ <ruby>)
             const html = preHtml + outputArea.innerHTML + postHtml;
-
-            // Tạo file Blob định dạng .doc (MS Word)
             const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
             
-            // Tên file tải về
             const filename = 'TaiLieu_SongNgu_Furigana.doc';
-            
-            // Kích hoạt tiến trình tải xuống
             const downloadLink = document.createElement("a");
             document.body.appendChild(downloadLink);
             
             if (navigator.msSaveOrOpenBlob) {
-                navigator.msSaveOrOpenBlob(blob, filename); // Cho IE
+                navigator.msSaveOrOpenBlob(blob, filename); 
             } else {
                 downloadLink.href = url;
                 downloadLink.download = filename;
-                downloadLink.click(); // Cho Chrome, Firefox, Edge...
+                downloadLink.click(); 
             }
             
             document.body.removeChild(downloadLink);
