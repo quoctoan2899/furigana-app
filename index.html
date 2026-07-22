@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Thêm Furigana & Xuất File Word (Bản Siêu Tốc)</title>
+    <title>Công Cụ Thêm Furigana & Xuất File Word (Giữ Nguyên Bảng Biểu)</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -69,31 +69,36 @@
             font-size: 15px;
         }
 
-        textarea, .output-area {
+        /* Nâng cấp ô nhập liệu thành dạng Rich Text */
+        .rich-textarea {
             width: 100%;
-            height: 350px;
+            height: 450px;
             padding: 15px;
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 16px;
             line-height: 1.6;
             box-sizing: border-box;
-            resize: vertical;
+            overflow-y: auto;
+            background-color: #fff;
+            outline: none;
+        }
+        
+        .rich-textarea:empty:before {
+            content: attr(data-placeholder);
+            color: #9CA3AF;
         }
 
         .output-area {
             background-color: #F9FAFB;
-            overflow-y: auto;
-            white-space: pre-wrap;
         }
 
-        ruby {
-            ruby-align: center;
-        }
-        rt {
-            font-size: 0.6em;
-            color: #E63946; 
-        }
+        /* Đảm bảo bảng biểu hiển thị đẹp trên Web */
+        table { border-collapse: collapse; width: 100%; }
+        table, th, td { border: 1px solid #D1D5DB; padding: 8px; }
+
+        ruby { ruby-align: center; }
+        rt { font-size: 0.6em; color: #E63946; }
 
         .actions {
             margin-top: 25px;
@@ -117,22 +122,10 @@
             gap: 8px;
         }
 
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button:disabled {
-            background-color: #9CA3AF;
-            cursor: not-allowed;
-        }
-
-        .btn-export {
-            background-color: #10B981;
-        }
-
-        .btn-export:hover {
-            background-color: #059669;
-        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: #9CA3AF; cursor: not-allowed; }
+        .btn-export { background-color: #10B981; }
+        .btn-export:hover { background-color: #059669; }
 
         #status {
             text-align: center;
@@ -143,7 +136,6 @@
         }
     </style>
     
-    <!-- Đã đổi sang máy chủ Fastly (JSDelivr) siêu ổn định chống lỗi mạng -->
     <script src="https://fastly.jsdelivr.net/npm/kuroshiro@1.2.0/dist/kuroshiro.min.js"></script>
     <script src="https://fastly.jsdelivr.net/npm/kuroshiro-analyzer-kuromoji@1.1.0/dist/kuroshiro-analyzer-kuromoji.min.js"></script>
 </head>
@@ -151,17 +143,18 @@
 
     <div class="container">
         <h1>🇯🇵 Trình Tạo Furigana Song Ngữ 🇻🇳</h1>
-        <p class="subtitle">Tự động nhận diện Kanji và thêm Furigana (Hiragana), hỗ trợ xuất trực tiếp ra Microsoft Word.</p>
+        <p class="subtitle">Tự động nhận diện Kanji, thêm Furigana và <strong>GIỮ NGUYÊN 100%</strong> định dạng Bảng biểu từ Word.</p>
 
         <div class="grid">
             <div class="box">
-                <label for="inputText">Nhập văn bản (hỗ trợ cả Việt & Nhật trộn lẫn):</label>
-                <textarea id="inputText" placeholder="Ví dụ: Hôm nay tôi học 漢字 (Kanji) rất chăm chỉ. 日本語を勉強します。"></textarea>
+                <label>Nhập văn bản (Copy & Paste nguyên Bảng từ Word vào đây):</label>
+                <!-- Đổi thành thẻ div cho phép dán HTML/Bảng biểu -->
+                <div id="inputText" class="rich-textarea" contenteditable="true" data-placeholder="Dán văn bản Word (có bảng biểu, in đậm...) vào đây..."></div>
             </div>
             
             <div class="box">
                 <label>Kết quả (Xem trước):</label>
-                <div id="outputArea" class="output-area">Kết quả sẽ hiển thị ở đây...</div>
+                <div id="outputArea" class="rich-textarea output-area">Kết quả sẽ hiển thị ở đây...</div>
             </div>
         </div>
 
@@ -174,7 +167,7 @@
             </button>
         </div>
 
-        <div id="status">Hệ thống đang tải bộ từ điển tiếng Nhật (khoảng vài giây), vui lòng đợi...</div>
+        <div id="status">Hệ thống đang tải bộ từ điển tiếng Nhật, vui lòng đợi...</div>
     </div>
 
     <script>
@@ -183,16 +176,13 @@
 
         window.onload = async function() {
             try {
-                // Kiểm tra xem thư viện đã tải thành công chưa
                 if (typeof Kuroshiro === 'undefined') {
-                    throw new Error("Không thể tải thư viện cốt lõi từ máy chủ. Vui lòng tải lại trang (F5).");
+                    throw new Error("Không thể tải thư viện. Vui lòng tải lại trang (F5).");
                 }
 
-                // Xử lý linh hoạt cách khởi tạo để tránh lỗi "not a constructor"
                 const KuroshiroClass = Kuroshiro.default || Kuroshiro;
                 kuroshiro = new KuroshiroClass();
                 
-                // Trỏ thẳng vào thư mục dict nằm trên GitHub của bạn
                 await kuroshiro.init(new KuromojiAnalyzer({ 
                     dictPath: "dict/" 
                 }));
@@ -215,24 +205,50 @@
         async function addFurigana() {
             if (!isReady) return;
 
-            const text = document.getElementById('inputText').value;
-            if (!text.trim()) {
+            const inputDiv = document.getElementById('inputText');
+            if (!inputDiv.innerText.trim()) {
                 alert("Vui lòng nhập văn bản!");
                 return;
             }
 
             const btn = document.getElementById('convertBtn');
-            btn.innerHTML = "⏳ Đang xử lý...";
+            btn.innerHTML = "⏳ Đang xử lý... (Giữ nguyên định dạng)";
             btn.disabled = true;
 
             try {
-                const result = await kuroshiro.convert(text, { 
-                    mode: "furigana", 
-                    to: "hiragana" 
-                });
-                
-                const formattedResult = result.replace(/\n/g, "<br>");
-                document.getElementById('outputArea').innerHTML = formattedResult;
+                const outputArea = document.getElementById('outputArea');
+                // Bước 1: Copy Y NGUYÊN toàn bộ bảng biểu, màu sắc, font chữ từ ô nhập sang ô kết quả
+                outputArea.innerHTML = inputDiv.innerHTML;
+
+                // Bước 2: Quét sâu vào từng ô, từng dòng để tìm chữ Kanji
+                async function processNode(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const text = node.nodeValue;
+                        // Chỉ quét những đoạn có chứa Kanji để tối ưu tốc độ cực nhanh
+                        if (text.trim() && /[\u4E00-\u9FAF]/.test(text)) {
+                            const resultHtml = await kuroshiro.convert(text, { 
+                                mode: "furigana", 
+                                to: "hiragana" 
+                            });
+                            
+                            if (resultHtml !== text) {
+                                const span = document.createElement('span');
+                                span.innerHTML = resultHtml;
+                                node.parentNode.replaceChild(span, node);
+                            }
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Bỏ qua các thẻ không cần xử lý
+                        if (['SCRIPT', 'STYLE', 'RUBY', 'RT'].includes(node.nodeName)) return;
+                        const children = Array.from(node.childNodes);
+                        for (let child of children) {
+                            await processNode(child);
+                        }
+                    }
+                }
+
+                // Thực thi quét
+                await processNode(outputArea);
                 document.getElementById('exportBtn').style.display = "flex";
                 
             } catch (error) {
@@ -251,14 +267,15 @@
                 return;
             }
 
-            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tài liệu tiếng Nhật</title><style>body { font-family: 'Yu Mincho', 'MS Mincho', serif; font-size: 14pt; } ruby { ruby-align: center; } rt { font-size: 8pt; }</style></head><body>";
+            // Đóng gói lại file Word đảm bảo giữ nguyên bảng biểu
+            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tài liệu tiếng Nhật</title><style>body { font-family: 'Yu Mincho', 'MS Mincho', serif; font-size: 14pt; } table { border-collapse: collapse; } table, th, td { border: 1px solid black; padding: 5px; } ruby { ruby-align: center; } rt { font-size: 8pt; }</style></head><body>";
             const postHtml = "</body></html>";
             
             const html = preHtml + outputArea.innerHTML + postHtml;
             const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
             
-            const filename = 'TaiLieu_SongNgu_Furigana.doc';
+            const filename = 'TaiLieu_Giup_Giữ_BangBieu.doc';
             const downloadLink = document.createElement("a");
             document.body.appendChild(downloadLink);
             
